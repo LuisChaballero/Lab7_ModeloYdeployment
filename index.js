@@ -18,39 +18,44 @@ uuidv4();
 
  //GET /blog-api/comentarios
  app.get( '/blog-api/comentarios', ( req, res )=>{
+     CommentList.getAll()
+        .then( comments => {
+            return res.status(200).send(comments);
+        })
+        .catch( error => {
+            return Error(error);
+        })
     //return res.status( 200 ).json( comentarios );
  });
 
- //GET
- app.get( '/blog-api/comentarios-por-autor', ( req, res ) =>{
+app.get( '/blog-api/comentarios-por-autor', ( req, res ) =>{
+
     let autor = req.query.autor;
 
     if (!autor){
         res.statusMessage = "Nombre de autor no proporcionado";
         return res.status(406).send();
+    }
 
-    }
-    let result = comentarios.filter( (elemento)=>{
-        if (elemento.autor === autor){
-            console.log("elemento");
-            return elemento;
-        }
-    });
-
-    if (result.length > 0){
-        return res.status(200).json(result);
-    }
-    else{
-        res.statusMessage = "No hay comentarios de dicho autor";
-        return res.status(404).send();
-    }
+    CommentList.getByAutor(autor)
+        .then( result => {
+            if (result.length>0){
+                return res.status(200).json(result);
+            }
+            else{
+                res.statusMessage = "No hay comentarios de dicho autor";
+                return res.status(404).send();
+            }
+        })
+        .catch( error => {
+            return Error (error);
+        })
 
  });
 
  //POST
  app.post( '/blog-api/nuevo-comentario', jsonParser, ( req, res) => {
      console.log(req.body);
-
      
      let nuevoTitulo = req.body.titulo;
      let nuevoContenido = req.body.contenido;
@@ -70,7 +75,6 @@ uuidv4();
         if(mon<10) mon='0'+mon;
         let date = year+'-'+mon+'-'+day;
 
-
         let nuevoComentario = {
             id: uuidv4(),
             titulo: nuevoTitulo,
@@ -78,37 +82,36 @@ uuidv4();
             autor: nuevoAutor,
             fecha: date
         };
-        comentarios.push(nuevoComentario);
-
-        res.statusMessage = "Comentario agregado"
-        return res.status(201).send(nuevoComentario);
+        
+        CommentList.createComment( nuevoComentario)
+            .then ( comment => {
+                res.statusMessage = "comentario agregado"
+                return res.status(201).json(nuevoComentario);
+            })
+            .catch( error => {
+                throw Error (error);
+            });
      }
-
  });
-
+ 
  //DELETE
 
  app.delete( '/blog-api/remover-comentario/:id', ( req,res ) => {
     let id = req.params.id;
 
-
-    let result = comentarios.find( (comentario) => {
-        if (comentario.id == id){
-            return comentario;
-
-        }
-    });
-    //console.log(result);
-
-    if (result){
-        comentarios.splice(comentarios.indexOf(result),1);
-        //res.statusMessage = "Comentario"
-        return res.status(200).send();
-    }
-    else{
-        res.statusMessage = "Comentario con ese id no encontrado"
-        return res.status(404).send();
-    }
+    CommentList.deleteComment(id)
+        .then( result => {
+            if (result){
+                return res.status(200).send();
+            }
+            else{
+                res.statusMessage = "Id no encontrado";
+                return res.status(404).send();
+            }
+        })
+        .catch( error => {
+            throw Error ( error );
+        });
 
  });
 
@@ -119,41 +122,67 @@ uuidv4();
     let nuevoContenido = req.body.contenido;
     let nuevoAutor = req.body.autor;
 
-    if (urlId == ""){
+    if (!urlId){
         res.statusMessage = "El id no fue proporcionado";
         return res.status(406).send();
 
     }
     else if (urlId != id){
-        res.statusMessage = "El id no fue proporcionado";
+        res.statusMessage = "El id no concuerda";
         return res.status(409).send();
     }
-    else if ( nuevoAutor == "" || nuevoTitulo == "" || nuevoContenido == "" ){
+    //else if ( nuevoAutor == "" || nuevoTitulo == "" || nuevoContenido == "" ){
+     else if ( !nuevoAutor && !nuevoTitulo  && !nuevoContenido ){
+
         res.statusMessage = "Datos incompletos";
         return res.status(406).send();
     }
     else{
-            let result = comentarios.find( comentario => {
-                if (comentario.id == id){
-                    return comentario;  
-                }
-            });
-        
-        let currIndex = comentarios.indexOf(result);
-        if(result){
-        
-            comentarios[currIndex].titulo = nuevoTitulo;
-            comentarios[currIndex].contenido = nuevoContenido;
-            comentarios[currIndex].autor = nuevoAutor;
+        //Current date
+        let today = new Date();
+        let day = today.getDate();
+        let mon = today.getMonth()+1; 
+        let year = today.getFullYear();
+        if(day<10) day='0'+day;
+        if(mon<10) mon='0'+mon;
+        let date = year+'-'+mon+'-'+day;
 
-            return res.status(202).send(comentarios[currIndex]);
+        let updatedComment = {
+            date
+        };
+
+        if(nuevoAutor){
+            updatedComment.autor = nuevoAutor;
         }
-        else{
-            res.statusMessage = "Comentario con ese id no encontrado";
-            return res.status(404).send();
+
+        if(nuevoContenido){
+            updatedComment.contenido = nuevoContenido;
         }
+
+        if(nuevoTitulo){
+            updatedComment.titulo = nuevoTitulo;
+        }
+
+        CommentList.updateComment(urlId, updatedComment)
+            .then( result => {
+                console.log(result);
+                if (result){
+                    return res.status(202).json(result);
+
+                }
+                else{
+                    res.statusMessage = "Comentario con ese id no encontrado";
+                    return res.status(404).send();
+
+                }
+            })
+            .catch( error => {
+                return Error( error );
+            });
+
     } 
  });
+ 
 
  let server;
 

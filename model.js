@@ -1,6 +1,6 @@
 let mongoose = require( 'mongoose');
 
-mongoose.Promies = global.Promise;
+mongoose.Promise = global.Promise;
 
 //La definicion del esquema de la coleccion del estudiante
 let commentsCollection = mongoose.Schema({
@@ -21,7 +21,7 @@ let commentsCollection = mongoose.Schema({
         type: String,
         required: true
     },
-    Fecha: {
+    fecha: {
         type: String,
         required: true
     }
@@ -36,9 +36,49 @@ let CommentList = {
                 return comments;
             })
             .catch ( error => {
-                return Error ( error );
+                throw Error ( error );
+            });
+    },
+
+    getByAutor : function( aut ){
+        return Comment.find( {autor: aut })
+            .then( comment => {
+                return comment;
+            })
+            .catch ( error => {
+                throw Error ( error );
+            });
+    },
+
+    createComment : function ( commentInfo ){
+        return Comment.create( commentInfo )
+            .then ( comment => {
+                return comment;
+            })
+            .catch ( error => {
+                throw Error ( error );
+            });
+    },
+
+    updateComment : function (ident, newData){
+        return Comment.findOneAndUpdate( {id: ident}, newData )
+            .then( result => {
+                return result;
+            })
+            .catch( error => {
+                throw Error ( error );
+            })
+    },
+    deleteComment : function (ident) {
+        return Comment.remove({id: ident})
+            .then( result => {
+                return result;
+            })
+            .catch ( error => {
+                return Error (error);
             });
     }
+
 }
 
 module.exports = {
